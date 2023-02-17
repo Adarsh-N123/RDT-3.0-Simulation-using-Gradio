@@ -1,0 +1,67 @@
+# SimPy models for the Sending and Receiving Applications.
+#
+# The sending application:
+#	- keeps creating new messages
+#	- requests the lower-layer (rdt_sender)
+#	  to deliver each message using the rdt_send() function
+#
+# The receiving application:
+#	- receives the message delivered by the lower-layer to its
+#	   deliver_data() method.
+#	- does some basic validation. 
+
+# Author: Neha Karanjkar
+
+
+import simpy
+import random
+from Packet import Packet
+import sys
+class SendingApplication(object):
+
+	def __init__(self,env):
+		# Initialize variables
+		self.env=env 
+		self.rdt_sender=None
+		self.total_messages_sent=0
+
+		# start behavior
+		self.env.process(self.behavior())
+		self.logger = None
+
+	def behavior(self):
+		
+		while True:
+			# wait for a random amount of time
+			t=random.randint(1,5)
+			yield self.env.timeout(t)
+			
+			# create a message (its just a number, for now.)
+			msg = self.total_messages_sent
+			
+			# try to send it.
+			if self.rdt_sender.rdt_send(msg):
+				# success.
+				self.total_messages_sent+=1
+				self.logger.debug("TIME:"+str(self.env.now)+"SENDING APP: sent data"+str(msg))
+
+class ReceivingApplication(object):
+
+	def __init__(self,env):
+		# Initialize variables
+		self.env=env 
+		self.total_packets_received=0
+		self.logger = None
+
+	def deliver_data(self,data):
+		# This function is called by the lower-layer (rdt_receiver)
+		# to deliver data to the Receiving Application
+		self.logger.debug("TIME:"+str(self.env.now)+"RECEIVING APP: received data"+str(data))
+		
+		# do some basic validation.
+		if not (data==self.total_packets_received):
+			self.logger.debug("ERROR!! RECEIVING APP: received wrong data:"+str(data)+",expected:"+str(self.total_packets_received))
+			self.logger.debug("Halting simulation...")
+			sys.exit(0)
+		self.total_packets_received+=1
+
